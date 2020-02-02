@@ -1,0 +1,76 @@
+use std::{collections::HashMap, rc::Rc};
+use crate::ast::{Math, Expression, Statement, Program};
+grammar;
+
+
+extern {
+    type Location = (usize, usize);
+    type Error = String;
+}
+
+
+pub Program: Program = <Stmt*> => Program { statements: <> };
+
+
+Stmt: Statement = {
+    "menu" <name: Str> "{" <cases: (<Str> "{" <Stmt*> "}")+> "}" => {
+        let mut result = HashMap::new();
+        for (name, scope) in cases {
+            result.insert(name, scope);
+        }
+        Statement::Menu(name, result)
+    },
+    <variable: Variable> "=" <expr: Expr> ";" => Statement::Assign(variable, expr),
+    "print" <exprs: Expr+> ";" => Statement::Print(exprs),
+    "input" <var: Variable> ";" => Statement::Input(var),
+    "for" <variable: Variable> "in" <begin: Expr> ".." <end: Expr> "{" <body: Stmt*> "}" => Statement::ForLoop { variable, begin: Rc::new(begin), end: Rc::new(end), body },
+    "while" <condition: Expr> "{" <body: Stmt*> "}" => Statement::WhileLoop { condition, body },
+    "if" <condition: Expr> "{" <if_then: Stmt*> "}" => Statement::IfThenElse { condition, if_then, if_else: Vec::new() },
+    "if" <condition: Expr> "{" <if_then: Stmt*> "}" "else" "{" <if_else: Stmt*> "}" => Statement::IfThenElse { condition, if_then, if_else },
+    "clear" ";" => Statement::Clear,
+    "stop" ";" => Statement::Stop,
+    "pause" ";" => Statement::Pause,
+}
+
+
+Expr: Expression = {
+    "(" <expr: Expr> ")" => expr,
+    <ch: Variable> => Expression::Variable(ch),
+    <n: Num> => Expression::Number(n),
+    <str: Str> => Expression::String(str),
+    <math: Math> => Expression::Math(Rc::new(math)),
+    "true" => Expression::Number(1.0),
+    "false" => Expression::Number(0.0),
+}
+
+
+Math: Math = {
+    "log" <base: Expr> <operand: Expr> => Math::Log { base, operand },
+    "ln" <operand: Expr> => Math::NaturalLog(operand),
+    "exp" <base: Expr> <power: Expr> => Math::Exponent { base, power },
+    "add" <a: Expr> <b: Expr> => Math::Add(a, b),
+    "sub" <a: Expr> <b: Expr> => Math::Subtract(a, b),
+    "div" <a: Expr> <b: Expr> => Math::Divide(a, b),
+    "mul" <a: Expr> <b: Expr> => Math::Multiply(a, b),
+    "eq" <a: Expr> <b: Expr> => Math::Equal(a, b),
+    "neq" <a: Expr> <b: Expr> => Math::NotEqual(a, b),
+    "and" <a: Expr> <b: Expr> => Math::And(a, b),
+    "or" <a: Expr> <b: Expr> => Math::Or(a, b),
+    "not" <a: Expr> => Math::Not(a),
+    "sin" <a: Expr> => Math::Sin(a),
+    "cos" <a: Expr> => Math::Cos(a),
+    "tan" <a: Expr> => Math::Tan(a),
+    "-" <expr: Expr> => Math::Negate(expr)
+}
+
+
+Str: String = <s:r#""(\\.|[^"])*""#> => String::from(&s[1..s.len()-1]).replace("\\n","\n").replace("\\r","\r").replace("\\t","\t").replace("\\0","\0");
+Variable: char = <s:r#"[a-z]{1}"#> => s.to_uppercase().chars().nth(0).unwrap();
+
+Num: f64 = {
+    r"[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?" => match <>.parse::<i32>() {
+        Ok(val) => val as f64,
+        Err(_) => <>.parse::<f64>().unwrap(),
+    }
+}
+
