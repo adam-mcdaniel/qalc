@@ -27,3 +27,11 @@ There are very few commands, but they are very simple.
 | `pause` | Pauses the program and waits for the user to press ENTER. | ``` pause; ``` |
 | `VAR = ITEM` | Stores ITEM into VAR. | ``` a = 5; ``` |
 | `# COMMENT` | Adds annotations to code. |  ``` # Im a comment! ``` |
+
+# Installation
+
+Install qalc using cargo.
+
+```
+cargo install -f --git https://github.com/adam-mcdaniel/qalc
+```
